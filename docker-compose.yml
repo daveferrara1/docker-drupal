@@ -27,7 +27,7 @@ services:
     restart: always
 
   mariadb:
-    image: mariadb:latest
+    image: mariadb:10.3.0
     volumes:
       - /home/docker/mysql:/var/lib/mysql
     environment:
