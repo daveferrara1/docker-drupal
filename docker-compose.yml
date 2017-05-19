@@ -8,7 +8,6 @@ version: '3'
 services:
   drupal8:
     build: .
-    image: drupal:8.3.2-fpm
     ports:
       - 8080:80
     volumes:
