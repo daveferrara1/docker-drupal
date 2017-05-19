@@ -1,0 +1,36 @@
+# Drupal with mariadb
+#
+# Access via "http://localhost:8080"
+#   (or "http://$(docker-machine ip):8080" if using docker-machine)
+#
+
+version: '3'
+services:
+  drupal8:
+    build: .
+    image: drupal:8.3.2-fpm
+    ports:
+      - 8080:80
+    volumes:
+      - ./modules:/var/www/html/modules
+      - ./profiles:/var/www/html/profiles
+      - ./themes:/var/www/html/themes
+      # this takes advantage of the feature in Docker that a new anonymous
+      # volume (which is what we're creating here) will be initialized with the
+      # existing content of the image at the same location
+      - ./sites:/var/www/html/sites
+    environment:
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=Sup3r88
+      - VIRTUAL_HOST=live.damnserver.com
+    links:
+      - mariadb
+    restart: always
+
+  mariadb:
+    image: mariadb:latest
+    volumes:
+      - /home/docker/mysql:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=Sup3r88
+    restart: always
