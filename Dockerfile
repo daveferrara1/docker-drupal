@@ -1,7 +1,7 @@
-# Drupal version 8.3.2
-# https://raw.githubusercontent.com/docker-library/drupal/1a7d35cc4d2d88f7658a2b6ff39af85baca463f0/8.3/fpm/Dockerfile
 # from https://www.drupal.org/requirements/php#drupalversions
-FROM php:7.1-fpm
+FROM php:7.1-apache
+
+RUN a2enmod rewrite
 
 # install the PHP extensions we need
 RUN set -ex \
