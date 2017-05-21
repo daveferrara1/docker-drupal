@@ -19,12 +19,12 @@ services:
     environment:
       - MYSQL_USER=root
       - MYSQL_PASSWORD=Sup3r88
-      - VIRTUAL_HOST=live.damnserver.com
+      - VIRTUAL_HOST=live.daveferrara1.com
     links:
       - mysql
     restart: always
 
-  mariadb:
+  mysql:
     image: mysql:latest
     volumes:
       - /home/docker/mysql:/var/lib/mysql
