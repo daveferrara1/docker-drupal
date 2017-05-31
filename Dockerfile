@@ -33,8 +33,9 @@ RUN { \
 		echo 'opcache.enable_cli=1'; \
 	} > /usr/local/etc/php/conf.d/opcache-recommended.ini
 
-# Drush going to need this.
-RUN apt-get install mysql-client -y
+# Drush going to need this for sql-sync.
+RUN apt-get update && apt-get install -y \
+    mysql-client
 
 WORKDIR /var/www/html
 
