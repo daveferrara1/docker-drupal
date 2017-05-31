@@ -34,7 +34,7 @@ RUN { \
 	} > /usr/local/etc/php/conf.d/opcache-recommended.ini
 
 # Drush going to need this.
-RUN apt-get install mysql-client
+RUN apt-get install mysql-client -y
 
 WORKDIR /var/www/html
 
