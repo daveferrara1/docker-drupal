@@ -33,6 +33,9 @@ RUN { \
 		echo 'opcache.enable_cli=1'; \
 	} > /usr/local/etc/php/conf.d/opcache-recommended.ini
 
+# Drush going to need this.
+RUN apt-get install mysql-client
+
 WORKDIR /var/www/html
 
 # https://www.drupal.org/node/3060/release
