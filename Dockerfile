@@ -35,8 +35,10 @@ RUN { \
 
 # Drush going to need this for sql-sync.
 RUN apt-get update && apt-get install -y \
-    mysql-client
+    mysql-client \
+    openssh-server
 
+RUN service ssh start
 WORKDIR /var/www/html
 
 # https://www.drupal.org/node/3060/release
