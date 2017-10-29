@@ -1,62 +1,180 @@
-# from https://www.drupal.org/requirements/php#drupalversions
-FROM php:7.1-apache
+FROM alpine:edge
+MAINTAINER Wodby <admin@wodby.com>
 
-RUN a2enmod rewrite
+# Install packages
+RUN echo 'http://alpine.gliderlabs.com/alpine/edge/main' > /etc/apk/repositories && \
+    echo 'http://alpine.gliderlabs.com/alpine/edge/community' >> /etc/apk/repositories && \
+    echo 'http://alpine.gliderlabs.com/alpine/edge/testing' >> /etc/apk/repositories && \
 
-# install the PHP extensions we need
-RUN set -ex \
-	&& buildDeps=' \
-		libjpeg62-turbo-dev \
-		libpng12-dev \
-		libpq-dev \
-	' \
-	&& apt-get update && apt-get install -y --no-install-recommends $buildDeps && rm -rf /var/lib/apt/lists/* \
-	&& docker-php-ext-configure gd \
-		--with-jpeg-dir=/usr \
-		--with-png-dir=/usr \
-	&& docker-php-ext-install -j "$(nproc)" gd mbstring opcache pdo pdo_mysql pdo_pgsql zip \
-# PHP Warning:  PHP Startup: Unable to load dynamic library '/usr/local/lib/php/extensions/no-debug-non-zts-20151012/gd.so' - libjpeg.so.62: cannot open shared object file: No such file or directory in Unknown on line 0
-# PHP Warning:  PHP Startup: Unable to load dynamic library '/usr/local/lib/php/extensions/no-debug-non-zts-20151012/pdo_pgsql.so' - libpq.so.5: cannot open shared object file: No such file or directory in Unknown on line 0
-	&& apt-mark manual \
-		libjpeg62-turbo \
-		libpq5 \
-	&& apt-get purge -y --auto-remove $buildDeps
+    apk add --update \
+        libressl \
+        ca-certificates \
+        openssh-client \
+        rsync \
+        git \
+        curl \
+        wget \
+        gzip \
+        tar \
+        patch \
+        perl \
+        pcre \
+        imap \
+        imagemagick \
+        mysql-client \
 
-# set recommended PHP.ini settings
-# see https://secure.php.net/manual/en/opcache.installation.php
-RUN { \
-		echo 'opcache.memory_consumption=128'; \
-		echo 'opcache.interned_strings_buffer=8'; \
-		echo 'opcache.max_accelerated_files=4000'; \
-		echo 'opcache.revalidate_freq=60'; \
-		echo 'opcache.fast_shutdown=1'; \
-		echo 'opcache.enable_cli=1'; \
-	} > /usr/local/etc/php/conf.d/opcache-recommended.ini
+        # Temp packages
+        build-base \
+        autoconf \
+        libtool \
+        php7-dev \
+        pcre-dev \
+        imagemagick-dev \
 
-# Drush going to need this for sql-sync.
-RUN apt-get update && apt-get install -y \
-    mysql-client \
-    openssh-server
+        # PHP packages
+        php7 \
+        php7-fpm \
+        php7-opcache \
+        php7-session \
+        php7-dom \
+        php7-xml \
+        php7-xmlreader \
+        php7-ctype \
+        php7-ftp \
+        php7-gd \
+        php7-json \
+        php7-posix \
+        php7-curl \
+        php7-pdo \
+        php7-pdo_mysql \
+        php7-sockets \
+        php7-zlib \
+        php7-mcrypt \
+        php7-mysqli \
+        php7-sqlite3 \
+        php7-bz2 \
+        php7-phar \
+        php7-openssl \
+        php7-posix \
+        php7-zip \
+        php7-calendar \
+        php7-iconv \
+        php7-imap \
+        php7-soap \
+        php7-dev \
+        php7-pear \
+        php7-redis \
+        php7-mbstring \
+        php7-xdebug \
+        php7-exif \
+        php7-xsl \
+        php7-ldap \
+        php7-bcmath \
+        php7-memcached \
+        php7-oauth \
+        php7-apcu \
+        && \
 
-RUN service ssh start
+    # Create symlinks for backward compatibility
+    ln -sf /usr/bin/php7 /usr/bin/php && \
+    ln -sf /usr/sbin/php-fpm7 /usr/bin/php-fpm && \
+
+    # Install imagick
+    sed -ie 's/-n//g' /usr/bin/pecl && \
+    yes | pecl install imagick && \
+    echo 'extension=imagick.so' > /etc/php7/conf.d/imagick.ini && \
+
+    # Install uploadprogess
+    cd /tmp/ && wget https://github.com/Jan-E/uploadprogress/archive/master.zip && \
+    unzip master.zip && \
+    cd uploadprogress-master/ && \
+    phpize7 && ./configure --with-php-config=/usr/bin/php-config7 && \
+    make && make install && \
+    echo 'extension=uploadprogress.so' > /etc/php7/conf.d/20_uploadprogress.ini && \
+    cd .. && rm -rf ./master.zip ./uploadprogress-master && \
+
+    # Disable Xdebug
+    rm /etc/php7/conf.d/xdebug.ini && \
+
+    # Install composer
+    curl -sS https://getcomposer.org/installer | php7 -- --install-dir=/usr/local/bin --filename=composer && \
+
+    # Install PHPUnit
+    curl -sSL https://phar.phpunit.de/phpunit.phar -o phpunit.phar && \
+        chmod +x phpunit.phar && \
+        mv phpunit.phar /usr/local/bin/phpunit && \
+
+    # Install drush
+    php -r "readfile('https://s3.amazonaws.com/files.drush.org/drush.phar');" > /usr/local/bin/drush && \
+    chmod +x /usr/local/bin/drush && \
+
+    # Install Drupal Console
+    curl https://drupalconsole.com/installer -o /usr/local/bin/drupal && \
+    chmod +x /usr/local/bin/drupal && \
+
+    # Cleanup
+    apk del --purge \
+        *-dev \
+        build-base \
+        autoconf \
+        libtool \
+        && \
+
+    rm -rf \
+        /usr/include/php \
+        /usr/lib/php/build \
+        /var/cache/apk/* \
+        /tmp/* \
+        /root/.composer
+
+# Configure php.ini
+RUN sed -i \
+        -e "s/^expose_php.*/expose_php = Off/" \
+        -e "s/^;date.timezone.*/date.timezone = UTC/" \
+        -e "s/^memory_limit.*/memory_limit = -1/" \
+        -e "s/^max_execution_time.*/max_execution_time = 300/" \
+        -e "s/^; max_input_vars.*/max_input_vars = 2000/" \
+        -e "s/^post_max_size.*/post_max_size = 512M/" \
+        -e "s/^upload_max_filesize.*/upload_max_filesize = 512M/" \
+        -e "s/^error_reporting.*/error_reporting = E_ALL/" \
+        -e "s/^display_errors.*/display_errors = On/" \
+        -e "s/^display_startup_errors.*/display_startup_errors = On/" \
+        -e "s/^track_errors.*/track_errors = On/" \
+        -e "s/^mysqlnd.collect  _memory_statistics.*/mysqlnd.collect_memory_statistics = On/" \
+        /etc/php7/php.ini && \
+
+    echo "error_log = \"/proc/self/fd/2\"" | tee -a /etc/php7/php.ini
+
+# Copy PHP configs
+COPY 00_opcache.ini /etc/php7/conf.d/
+COPY 00_xdebug.ini /etc/php7/conf.d/
+COPY php-fpm.conf /etc/php7/
+
+# Add default drush aliases
+RUN mkdir -p /etc/drush/site-aliases
+COPY default.aliases.drushrc.php /etc/drush/site-aliases/
+
+# Create user www-data
+RUN addgroup -g 82 -S www-data && \
+	adduser -u 82 -D -S -G www-data www-data
+
+# Create work dir
+RUN mkdir -p /var/www/html && \
+    chown -R www-data:www-data /var/www
+
 WORKDIR /var/www/html
+VOLUME /var/www/html
+EXPOSE 9000
 
-# https://www.drupal.org/node/3060/release
-ENV DRUPAL_VERSION 8.3.2
-ENV DRUPAL_MD5 d1fce1ec78ca1bcde4a346f4c06531b4
 
-RUN curl -fSL "https://ftp.drupal.org/files/projects/drupal-${DRUPAL_VERSION}.tar.gz" -o drupal.tar.gz \
-	&& echo "${DRUPAL_MD5} *drupal.tar.gz" | md5sum -c - \
-	&& tar -xz --strip-components=1 -f drupal.tar.gz \
-	&& rm drupal.tar.gz \
-	&& chown -R www-data:www-data sites modules themes
+# Init www-data user
+USER www-data
+# RUN composer global require hirak/prestissimo:^0.3 --optimize-autoloader && \
+#    rm -rf ~/.composer/.cache && \
+#    drupal init --override
 
-# Install Composer.
-RUN curl -sS https://getcomposer.org/installer | php
-RUN mv composer.phar /usr/local/bin/composer
 
-# Install Drush 8.
-RUN composer global require drush/drush
-RUN composer global update
-# Unfortunately, adding the composer vendor dir to the PATH doesn't seem to work. So:
-RUN ln -s /root/.composer/vendor/bin/drush /usr/local/bin/drush
+
+USER root
+#COPY docker-entrypoint.sh /usr/local/bin/
+#CMD docker-entrypoint.sh
