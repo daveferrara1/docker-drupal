@@ -1,28 +1,24 @@
 # from https://www.drupal.org/requirements/php#drupalversions
-FROM php:7.1-fpm-alpine
+FROM php:7.1-apache
+
+RUN a2enmod rewrite
 
 # install the PHP extensions we need
-# postgresql-dev is needed for https://bugs.alpinelinux.org/issues/3642
 RUN set -ex \
-	&& apk add --no-cache --virtual .build-deps \
-		coreutils \
-		freetype-dev \
-		libjpeg-turbo-dev \
-		libpng-dev \
-		postgresql-dev \
+	&& buildDeps=' \
+		libjpeg62-turbo-dev \
+		libpng12-dev \
+		libpq-dev \
+	' \
+	&& apt-get update && apt-get install -y --no-install-recommends $buildDeps && rm -rf /var/lib/apt/lists/* \
 	&& docker-php-ext-configure gd \
-		--with-freetype-dir=/usr/include/ \
-		--with-jpeg-dir=/usr/include/ \
-		--with-png-dir=/usr/include/ \
+		--with-jpeg-dir=/usr \
+		--with-png-dir=/usr \
 	&& docker-php-ext-install -j "$(nproc)" gd mbstring opcache pdo pdo_mysql pdo_pgsql zip \
-	&& runDeps="$( \
-		scanelf --needed --nobanner --format '%n#p' --recursive /usr/local \
-			| tr ',' '\n' \
-			| sort -u \
-			| awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
-	)" \
-	&& apk add --virtual .drupal-phpexts-rundeps $runDeps \
-	&& apk del .build-deps
+	&& apt-mark manual \
+		libjpeg62-turbo \
+		libpq5 \
+	&& apt-get purge -y --auto-remove $buildDeps
 
 # set recommended PHP.ini settings
 # see https://secure.php.net/manual/en/opcache.installation.php
@@ -36,3 +32,35 @@ RUN { \
 	} > /usr/local/etc/php/conf.d/opcache-recommended.ini
 
 WORKDIR /var/www/html
+
+# https://www.drupal.org/node/3060/release
+ENV DRUPAL_VERSION 8.4.0
+ENV DRUPAL_MD5 074795a2f5fc0b599a7dcfb9d1fb03f5
+
+RUN curl -fSL "https://ftp.drupal.org/files/projects/drupal-${DRUPAL_VERSION}.tar.gz" -o drupal.tar.gz \
+	&& echo "${DRUPAL_MD5} *drupal.tar.gz" | md5sum -c - \
+	&& tar -xz --strip-components=1 -f drupal.tar.gz \
+	&& rm drupal.tar.gz \
+	&& chown -R www-data:www-data sites modules themes
+
+
+
+RUN set -ex \
+	&& apt-get update && apt-get install -y mysql-client \
+		openssh-client \
+		git \
+		curl \
+		wget \
+		gzip \
+		nano \
+		tar
+
+# Install Composer.
+RUN curl -sS https://getcomposer.org/installer | php
+RUN mv composer.phar /usr/local/bin/composer
+
+
+RUN git clone git@github.com:daveferrara1/drupal-project.git drupal
+
+
+RUN composer install --no-interaction
