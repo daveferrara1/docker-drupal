@@ -33,18 +33,6 @@ RUN { \
 
 WORKDIR /var/www/html
 
-# https://www.drupal.org/node/3060/release
-ENV DRUPAL_VERSION 8.4.0
-ENV DRUPAL_MD5 074795a2f5fc0b599a7dcfb9d1fb03f5
-
-RUN curl -fSL "https://ftp.drupal.org/files/projects/drupal-${DRUPAL_VERSION}.tar.gz" -o drupal.tar.gz \
-	&& echo "${DRUPAL_MD5} *drupal.tar.gz" | md5sum -c - \
-	&& tar -xz --strip-components=1 -f drupal.tar.gz \
-	&& rm drupal.tar.gz \
-	&& chown -R www-data:www-data sites modules themes
-
-
-
 RUN set -ex \
 	&& apt-get update && apt-get install -y mysql-client \
 		openssh-client \
@@ -60,7 +48,7 @@ RUN curl -sS https://getcomposer.org/installer | php
 RUN mv composer.phar /usr/local/bin/composer
 
 
-RUN git clone git@github.com:daveferrara1/drupal-project.git drupal
+RUN git clone https://github.com/daveferrara1/drupal-project.git drupal
 
 
 RUN composer install --no-interaction
