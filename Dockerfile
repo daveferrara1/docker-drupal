@@ -33,8 +33,10 @@ RUN { \
 
 WORKDIR /var/www/html
 
+# Install common packages.
 RUN set -ex \
-	&& apt-get update && apt-get install -y mysql-client \
+	&& apt-get update && apt-get install -y --no-install-recommends \
+		mysql-client \
 		openssh-client \
 		git \
 		curl \
@@ -47,8 +49,9 @@ RUN set -ex \
 RUN curl -sS https://getcomposer.org/installer | php
 RUN mv composer.phar /usr/local/bin/composer
 
+# Clone Public Drupal Repo.
+RUN git clone https://github.com/daveferrara1/drupal-project.git .
 
-RUN git clone https://github.com/daveferrara1/drupal-project.git drupal
-
-
+# Install Drupal 8 from composer.json.
+USER www-data
 RUN composer install --no-interaction
