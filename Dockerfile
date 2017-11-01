@@ -53,5 +53,4 @@ RUN mv composer.phar /usr/local/bin/composer
 RUN git clone https://github.com/daveferrara1/drupal-project.git .
 
 # Install Drupal 8 from composer.json.
-USER www-data
 RUN composer install --no-interaction
