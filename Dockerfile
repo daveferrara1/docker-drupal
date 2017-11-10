@@ -53,7 +53,7 @@ RUN mv composer.phar /usr/local/bin/composer
 # Install Drush Launcher
 RUN wget -O drush.phar https://github.com/drush-ops/drush-launcher/releases/download/0.4.2/drush.phar
 RUN chmod +x drush.phar
-RUN sudo mv drush.phar /usr/local/bin/drush
+RUN mv drush.phar /usr/local/bin/drush
 
 # Clone Public Drupal Repo.
 RUN git clone https://github.com/daveferrara1/drupal-project.git .
